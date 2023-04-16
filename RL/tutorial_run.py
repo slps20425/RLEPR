@@ -1,6 +1,6 @@
 import gym  # not necessary
 import time
-from elegantrl.tutorial_agent import *
+from tutorial_agent import *
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import pickle
@@ -221,7 +221,7 @@ def train_and_evaluate(args,if_train, agent_id=0,load_pretrained=False, pretrain
                     asset_memory, dd_action=eval_env.evan_check_stock_trading_env(args,if_train)
                     print(f'this is Final Asset {dd_action} \n')
                     portfolio = dd_action[dd_action.columns[(dd_action != 0).any()]]
-                    price = pd.read_pickle('/Users/yi-hsuanlee/Desktop/WIDM/Thesis/finRL-elegant/dashboard/data/latest_45tic_priceBook.pkl')
+                    price = pd.read_pickle('./data/latest_45tic_priceBook.pkl')
                     price.rename({'Stock_ID':'stockno'},axis=1,inplace=True)
                     price_df =price.loc['2019-01-01':]
                     price_df_change=price_df.pivot_table(columns='stockno',values='change',index=price_df.index)
@@ -251,7 +251,7 @@ def train_and_evaluate(args,if_train, agent_id=0,load_pretrained=False, pretrain
                     time.sleep(1)
                     #buffer.save_or_load_history(cwd, if_save=True)
                     save_dict[_] = tmp_dict
-                with open('./dashboard/data/latest_test.pkl', 'wb') as handle:
+                with open('./data/latest_test_live_update.pkl', 'wb') as handle:
                     pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
             except KeyError:
                 print(f"error happening")

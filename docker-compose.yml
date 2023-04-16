@@ -5,4 +5,5 @@ services:
     container_name: RLEPR
     ports:
       - "8050:8050"
-    command: ["--if_RLtrain", "False", "--if_AEtrain", "False"]
+    # The first 'false' is for --if_AEtrain, the second 'false' is for --if_RLtrain
+    command: ["false", "false"]

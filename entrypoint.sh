@@ -1,27 +1,8 @@
 #!/bin/bash
 
 # Set default values for ARGUMENT1 and ARGUMENT2
-ARGUMENT1="False"
-ARGUMENT2="False"
-
-# Read the arguments
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --if_RLtrain)
-      ARGUMENT2="$2"
-      shift 2
-      ;;
-    --if_AEtrain)
-      ARGUMENT1="$2"
-      shift 2
-      ;;
-    *)
-      printf "Unknown argument: %s\n" "$1" >&2
-      exit 1
-      ;;
-  esac
-done
-
+ARGUMENT1="$1"
+ARGUMENT2="$2"
 
 # Run step B
 ./step_b.sh &
@@ -42,4 +23,3 @@ while true; do
   # Sleep for a minute before checking again
   sleep 60
 done
-

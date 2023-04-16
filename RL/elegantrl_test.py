@@ -30,7 +30,7 @@ if_past_month_year_data=False
 
 if __name__ == "__main__": 
   parser = argparse.ArgumentParser()
-  parser.add_argument('--if_train', type=bool, default=False, help='True for training, False for evaluation')
+  parser.add_argument('--if_RLtrain', type=bool, default=False, help='True for training, False for evaluation')
   parser.add_argument('--encoder_dataPath', type=str,default='./data/latest_composite_lstm_45tic_30d_25F@5F_eleganRl.pkl', help='Path to the encoder data')
   parser.add_argument('--data_trend_path', type=str,default='./data/latest_composite_lstm_45tic_30d_25F@5F_trend_eleganRl.pkl', help='Path to the data trend file')
   parser.add_argument('--latest_priceBook_path', type=str,default='./data/latest_45tic_priceBook.pkl', help='Path to the latest price book file')
@@ -66,7 +66,7 @@ if __name__ == "__main__":
   args.env.target_reward = 1.3
   args.eval_env.target_reward = 1.3
   args.action_repeats = 2
-  if_train=cmd_args.if_train
+  if_train=cmd_args.if_RLtrain
   load_pretrained=False if if_train else True
   
   # train_and_evaluate(args,if_train=if_train, load_pretrained=load_pretrained, pretrained_path="/Users/yi-hsuanlee/Desktop/WIDM/Thesis/finRL-elegant/dashboard/testing_temp") # the training process will terminate once it reaches the target reward.

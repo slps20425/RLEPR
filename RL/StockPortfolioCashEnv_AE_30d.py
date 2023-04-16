@@ -109,12 +109,12 @@ class StockPortfolioCashEnv_AE_30d:
         data_trend_path = data_trend_path #'/Users/yi-hsuanlee/Desktop/WIDM/Thesis/finRL-elegant/dashboard/AE/different_weights/30day_bk/composite_lstm_45tic_30d_26F@5F_trend_eleganRl.pkl' #'/Users/yi-hsuanlee/Desktop/WIDM/Thesis/交接的Code和Data/Data/2.5_AE_45_tic/newTill2021/newTill2021composite_lstm_45tic_30d_26F@5F_trend_eleganRl.pkl'
         # training_days = df.index.unique()[len(df.index.unique())-self.model_type]
         if not if_eval:
-            df = pd.read_pickle(self.data_path)#("/Users/yi-hsuanlee/Desktop/CSIE/WIDM/Thesis/交接的Code和Data/Data/2.5_AE_45_tic/composite_lstm_45tic_30d_26F_5F_eleganRl.pkl")
+            df = pd.read_pickle(self.data_path)
             df = df.loc[:'2019-01-03']
             #df = df.loc[:training_days.strftime('%Y-%m-%d')]
         else:
             # df = df.loc[training_days.strftime('%Y-%m-%d'):]
-            df = pd.read_pickle(self.data_path)#("/Users/yi-hsuanlee/Desktop/CSIE/WIDM/Thesis/交接的Code和Data/Data/2.5_AE_45_tic/composite_lstm_45tic_30d_26F_5F_eleganRl.pkl")
+            df = pd.read_pickle(self.data_path)
             df = df.loc['2019-01-04':]
         self.df = df
         self.priceData = pd.read_pickle(latest_priceBook_path) #pd.read_pickle("/Users/yi-hsuanlee/Desktop/WIDM/Thesis/交接的Code和Data/Data/2.5_AE_45_tic/newTill2021/2012-2021_priceBook.pkl")

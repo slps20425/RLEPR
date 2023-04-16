@@ -153,7 +153,6 @@ def update_datatable(value):
         id = "data-table",
         data=data,
         columns=[{'id': str(c), 'name': str(c)} for c in tableWeight.columns],
-        filter_action="native",
         sort_action="native",
         sort_mode="multi",
         selected_columns=[],
@@ -221,9 +220,8 @@ def update_datatable(value):
 @app.callback(
     Output('callBackPieGraph', 'figure'), 
     [Input("data-table", "active_cell")],
-     [State("active-cell-store", "children")]
     )
-def get_cell_clicked(active_cell,_):
+def get_cell_clicked(active_cell):
     global weight
     
     # For pie chart
@@ -258,22 +256,12 @@ def get_cell_clicked(active_cell,_):
 
     return pieFig
 
-@app.callback(
-    Output("active-cell-store", "children"),
-    [Input("data-table", "active_cell")],
-)
-def update_active_cell_store(active_cell):
-    if active_cell:
-        return active_cell["row"]
-    return None
-
 
 @app.callback(Output('timeseries', 'figure'),
               [Input('stockselector', 'value')])
 def update_graph(selected_dropdown_value):
     trace1 = []
     df_sub = df
-
     for stock in selected_dropdown_value:
         trace1.append(go.Scatter(x=df_sub[df_sub['Stock_ID'] == stock].index,
                                  y=df_sub[df_sub['Stock_ID'] == stock]['close'],
@@ -306,9 +294,10 @@ def update_graph(selected_dropdown_value):
                   width=None,  
                   height=None,
                   title={'text': 'Stock Prices', 'font': {'color': 'white'}, 'x': 0.5},
-                  xaxis={'range': [df_sub.index.min(), df_sub.index.max()]},
-                  yaxis={'title': 'Stock Price'},
-                  yaxis2={'title': 'WeeklyROI', 'overlaying': 'y', 'side': 'right'}
+                xaxis={'range': [df_sub.index.min(), df_sub.index.max()]},
+              yaxis={'title': 'Stock Price', 'type': 'linear', 'range': [df_sub['close'].min(), df_sub['close'].max()]},
+              yaxis2={'title': 'WeeklyROI', 'overlaying': 'y', 'side': 'right', 'type': 'linear', 'range': [chartWeight['WeeklyROI'].min(), chartWeight['WeeklyROI'].max()]}
+
               ),
               }
 
@@ -405,7 +394,6 @@ app.layout = html.Div(
                     children=[
                         dcc.Graph(
                             id="callBackPieGraph",
-                            figure=get_cell_clicked({"row": 0},None),
                             style={
                                 "width": "100%",
                                 "height": "100%",
@@ -438,7 +426,6 @@ app.layout = html.Div(
                 ),
             ],
         ),
-        html.Div(id="active-cell-store", style={"display": "none"}),  # Add this line here
     ],
     style={
         "width": "100%",
