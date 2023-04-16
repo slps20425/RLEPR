@@ -1,0 +1,23 @@
+/* Change the inner background color of the dropdown list */
+.Select-control {
+    background-color: #4E5050;
+}
+
+/* Change the default color of the dropdown options to blue */
+.VirtualizedSelectOption {
+    background-color: #A2E6EE;
+    color: white;
+}
+
+/* Change the color of the hovered dropdown option to pink */
+.VirtualizedSelectFocusedOption {
+    background-color: pink;
+    color: white;
+}
+
+/* Change the color of the selected dropdown option to blue */
+.VirtualizedSelectSelectedOption {
+    background-color: #4E5050;
+    color: white;
+}
+
