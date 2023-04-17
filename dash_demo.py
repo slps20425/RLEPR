@@ -262,14 +262,20 @@ def get_cell_clicked(active_cell):
 def update_graph(selected_dropdown_value):
     trace1 = []
     df_sub = df
+    min_close = float('inf')
+    max_close = float('-inf')
+
     for stock in selected_dropdown_value:
+        stock_df = df_sub[df_sub['Stock_ID'] == stock]
         trace1.append(go.Scatter(x=df_sub[df_sub['Stock_ID'] == stock].index,
                                  y=df_sub[df_sub['Stock_ID'] == stock]['close'],
                                  mode='lines',
                                  opacity=0.7,
                                  name=stock,
                                  textposition='bottom center'))
-    
+        min_close = min(min_close, stock_df['close'].min())
+        max_close = max(max_close, stock_df['close'].max())
+
     trace2 = go.Scatter(x=chartWeight.index,
                         y=chartWeight['WeeklyROI'],
                         mode='lines+markers',
@@ -286,8 +292,6 @@ def update_graph(selected_dropdown_value):
               'layout': go.Layout(
                   colorway=["#6eb9ba", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
                   template='plotly_dark',
-                #   paper_bgcolor='rgba(0, 0, 0, 0)',
-                #   plot_bgcolor='rgba(0, 0, 0, 0)',
                   margin={'b': 15},
                   hovermode='x',
                   autosize=True,
@@ -295,9 +299,8 @@ def update_graph(selected_dropdown_value):
                   height=None,
                   title={'text': 'Stock Prices', 'font': {'color': 'white'}, 'x': 0.5},
                 xaxis={'range': [df_sub.index.min(), df_sub.index.max()]},
-              yaxis={'title': 'Stock Price', 'type': 'linear', 'range': [df_sub['close'].min(), df_sub['close'].max()]},
+              yaxis={'title': 'Stock Price', 'type': 'linear', 'range': [min_close, max_close]},
               yaxis2={'title': 'WeeklyROI', 'overlaying': 'y', 'side': 'right', 'type': 'linear', 'range': [chartWeight['WeeklyROI'].min(), chartWeight['WeeklyROI'].max()]}
-
               ),
               }
 
