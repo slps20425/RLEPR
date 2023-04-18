@@ -7,8 +7,14 @@ ARGUMENT2="$2"
 # Run step B
 ./step_b.sh &
 
-# Run step C in the background
+# Run step_c.sh the first time
 ./step_c.sh &
+
+# Monitor data/latest_test_live_update.pkl for changes
+while inotifywait -e modify,create,delete data/latest_test_live_update.pkl; do
+  # Re-run step_c.sh whenever data/latest_test_live_update.pkl is updated or modified
+  ./step_c.sh &
+done
 
 # Check if it is Sunday at 8:00 am, and if so, run step A
 while true; do

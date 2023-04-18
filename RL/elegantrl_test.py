@@ -65,7 +65,7 @@ if __name__ == "__main__":
   args.cwd= './RL/testing_temp'
   args.env.target_reward = 1.3
   args.eval_env.target_reward = 1.3
-  args.action_repeats = 2
+  args.action_repeats = 1
   if_train=cmd_args.if_RLtrain
   load_pretrained=False if if_train else True
   

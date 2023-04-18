@@ -35,8 +35,10 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 ENV TZ=Asia/Taipei
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Update package list and install vim
+# Update package list and install inotify-tools and vim
 RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y inotify-tools && \
     apt-get install -y vim
     
 # Copy the entire folder structure into the container

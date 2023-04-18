@@ -1,7 +1,5 @@
 import dash
 import dash_html_components as html
-import flask 
-from flask_caching import Cache
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
@@ -9,11 +7,8 @@ import plotly.graph_objects as go
 import pandas as pd
 from dash.dependencies import Input, Output, State
 import plotly.express as px
-import dash_bootstrap_components as dbc
 import dash_table
-import dash_table_experiments as dt
 import numpy as np
-
 
 
 tableWeight = pd.DataFrame()
@@ -33,20 +28,17 @@ def preprocessWeight(datasetDF):
     cumprod_daily_pct_change = (1 + daily_pct_change).cumprod()
     datasetDF['ROI'] = cumprod_daily_pct_change
 
-    t_change = price_change_df.loc[datasetDF.index.tolist()]  * datasetDF[datasetDF.columns[1:-3]].astype(float) 
-    datasetDF['WeeklyROI'] = t_change.sum(axis = 1) #(1+t_change.sum(axis = 1)).cumprod()-1
-
-
-
-
-
-
-
-
+    #t_change = price_change_df.loc[datasetDF.index.tolist()]  * datasetDF[datasetDF.columns[1:-3]].astype(float) 
+    #datasetDF['WeeklyROI'] = t_change.sum(axis = 1) #(1+t_change.sum(axis = 1)).cumprod()-1
+    datasetDF['WeeklyROI'] = (datasetDF['Asset'] - datasetDF['Asset'].shift(1)) / datasetDF['Asset'].shift(1) * 100
+    datasetDF['WeeklyROI'].fillna(0, inplace=True)
     weight=datasetDF.iloc[::-1]
+    weight[0] = weight[0].apply(lambda x: max(0, x))
     weight = weight.applymap("{0:.2f}".format)
+    weight['WeeklyROI'] = weight['WeeklyROI'].map(lambda x: f'{x}%')
     weight=weight.rename(columns={0: 'Cash'})
-    
+
+
     weight = weight.replace('0.00', '-')
       
     return weight
@@ -83,9 +75,9 @@ def redesignWeight(weight):
     defaultWeight['Drop'] = newly_drop
     defaultWeight['Portfolio']=defaultWeight['Portfolio'].apply(lambda x : x[7:-18])
     defaultWeight.Cash= defaultWeight.Cash.replace('-','0.0').astype(float).map("{:.1%}".format)
-    new_col = ['Date \\ ','Add', 'Drop','Portfolio', 'Cash','Asset', 'WeeklyROI', 'ROI']
+    new_col = ['Date \\ ','Add', 'Drop','Portfolio', 'Cash','Asset', 'WeeklyROI', 'Portfolio Performance']
     defaultWeight.index= pd.to_datetime(weight[weight.columns[0]])
-
+    defaultWeight.rename(columns = {'ROI':'Portfolio Performance'}, inplace = True)
     tableWeight = defaultWeight[new_col]
     return tableWeight
 
@@ -155,8 +147,6 @@ def update_datatable(value):
         columns=[{'id': str(c), 'name': str(c)} for c in tableWeight.columns],
         sort_action="native",
         sort_mode="multi",
-        selected_columns=[],
-        selected_rows=[0],  # Set the default selected row to 0
         page_action="native",
         page_current=0,
         page_size=50,
@@ -207,8 +197,8 @@ def update_datatable(value):
                         'width': '350px'},
                         {'if': {'column_id': 'WeeklyROI'},
                         'width': '150px'},
-                        {'if': {'column_id': 'ROI'},
-                        'width': '150'},
+                        {'if': {'column_id': 'Portfolio Performance'},
+                        'width': '200px'},
                     
                     ],
                     fill_width = False
@@ -216,45 +206,45 @@ def update_datatable(value):
         )
 
 
-
-@app.callback(
-    Output('callBackPieGraph', 'figure'), 
-    [Input("data-table", "active_cell")],
-    )
-def get_cell_clicked(active_cell):
+def create_pie_chart(row):
     global weight
-    
-    # For pie chart
-    if active_cell:
-        row = active_cell['row']
-        
-    else:
-        row=0
+
     pieWeightValue = weight.iloc[row]
-    # print(pieWeightValue)
-    asset=pieWeightValue['Asset']
+    asset = pieWeightValue['Asset']
     asset = '{:,.2f}'.format(float(asset))
-    titlefont  = dict(family = 'Arial', color='white', size= 30)
+    titlefont = dict(family='Arial', color='white', size=30)
     pieWeightValue = pieWeightValue.loc[:'Asset']
     try:
         currentDay = pieWeightValue[0].strftime('%Y-%m-%d')
     except AttributeError as e:
         currentDay = pieWeightValue.name.strftime('%Y-%m-%d')
-    title=f'Portfolio Allocation <br><sup>{currentDay} Asset: ${asset} TWD </sup>'
+    title = f'Portfolio Allocation <br><sup>{currentDay} Asset: ${asset} TWD </sup>'
     pieWeightValue = pieWeightValue.replace('-', '0.00')
     pieChartData = pieWeightValue.iloc[1:-1][pieWeightValue.iloc[1:-1].astype(float) > 0]
     pieDF = pieChartData.to_frame()
     pieDF['Ticker'] = pieDF.index
-    pieDF=pieDF.rename(columns = {pieDF.columns[0]:'Allocation %'})
+    pieDF = pieDF.rename(columns={pieDF.columns[0]: 'Allocation %'})
 
-    pieFig=px.pie(pieDF,values= pieDF.columns[0],names = 'Ticker', title=title)
+    pieFig = px.pie(pieDF, values=pieDF.columns[0], names='Ticker', title=title)
 
-    pieFig.update_layout(template = 'plotly_dark',
-                title = title,
-                title_font= titlefont,
-                width  = 430, height = 400)
+    pieFig.update_layout(template='plotly_dark',
+                         title=title,
+                         title_font=titlefont,
+                         width=430, height=400)
 
     return pieFig
+
+@app.callback(
+    Output('callBackPieGraph', 'figure'),
+    [Input("data-table", "active_cell")],
+    [State("callBackPieGraph", "figure")]
+)
+def get_cell_clicked(active_cell, current_figure):
+    if active_cell:
+        row = active_cell['row']
+        return create_pie_chart(row)
+    else:
+        return current_figure  # Return the current figure when active_cell is None
 
 
 @app.callback(Output('timeseries', 'figure'),
@@ -264,6 +254,13 @@ def update_graph(selected_dropdown_value):
     df_sub = df
     min_close = float('inf')
     max_close = float('-inf')
+
+    # First, ensure your index is a DatetimeIndex
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+
+    # Select only the first week of each month
+    monthly_first_week = chartWeight[chartWeight.index.to_period('M').duplicated(keep='first') == False]
 
     for stock in selected_dropdown_value:
         stock_df = df_sub[df_sub['Stock_ID'] == stock]
@@ -276,8 +273,8 @@ def update_graph(selected_dropdown_value):
         min_close = min(min_close, stock_df['close'].min())
         max_close = max(max_close, stock_df['close'].max())
 
-    trace2 = go.Scatter(x=chartWeight.index,
-                        y=chartWeight['WeeklyROI'],
+    trace2 = go.Scatter(x=monthly_first_week.index,
+                        y=monthly_first_week['WeeklyROI'],
                         mode='lines+markers',
                         opacity=1,   
                         name=' WeeklyROI',
@@ -298,9 +295,9 @@ def update_graph(selected_dropdown_value):
                   width=None,  
                   height=None,
                   title={'text': 'Stock Prices', 'font': {'color': 'white'}, 'x': 0.5},
-                xaxis={'range': [df_sub.index.min(), df_sub.index.max()]},
-              yaxis={'title': 'Stock Price', 'type': 'linear', 'range': [min_close, max_close]},
-              yaxis2={'title': 'WeeklyROI', 'overlaying': 'y', 'side': 'right', 'type': 'linear', 'range': [chartWeight['WeeklyROI'].min(), chartWeight['WeeklyROI'].max()]}
+                xaxis={'range': [df_sub.index.min(), df_sub.index.max()], 'autorange': True},
+              yaxis={'title': 'Stock Price', 'type': 'linear', 'range': [min_close, max_close], 'autorange': True},
+              yaxis2={'title': 'WeeklyROI', 'overlaying': 'y', 'side': 'right', 'type': 'linear', 'range': [monthly_first_week['WeeklyROI'].min(), monthly_first_week['WeeklyROI'].max()], 'autorange': True}
               ),
               }
 
@@ -314,67 +311,76 @@ def get_max_lines(data, column):
         max_lines = max(max_lines, lines)
     return max_lines
 
-
-def get_data_object(user_selection):
-    """
-    For user selections, return the relevant in-memory data frame.
-    """
-    return weight[user_selection]
-
-def update_table(user_selection):
-    """
-    For user selections, return the relevant table
-    """
-    
-    df = get_data_object(user_selection)
-    columns = [{'name': col, 'id': col} for col in df.columns]
-    data = df.to_dict(orient='records')
-    return data, columns
-
- 
 app.layout = html.Div(
     children=[
-        html.Div(  # Main container div
-            className="row",
+        html.Div(  # New container div
+            style={
+                "width": "100%",
+                "height": "100%",
+                "backgroundColor": "#808080",
+                "overflow": "auto",  # Add overflow property
+            },
             children=[
-                html.Div(  # Upper left side
-                    className="div-user-controls",
-                    style={"width": "70%", "height": "50%", "display": "inline-block"},
+                html.Div(  # Main container div
+                    className="row",
                     children=[
-                        html.H2("STOCK PRICES \n Portfolio Allocation"),
-                        html.P("Visualising time series with Plotly - Dash."),
-                        html.P("Pick one or more stocks from the dropdown below."),
-                        html.Div(
-                            className="div-for-dropdown",
+                        html.Div(  # Upper left side
+                            className="div-user-controls",
+                            style={"width": "70%", "height": "50%", "display": "inline-block"},
                             children=[
-                                dcc.Dropdown(
-                                    id="stockselector",
-                                    options=get_options(df["Stock_ID"].unique()),
-                                    multi=True,
-                                    value=[df["close"].sort_values()[0]],
-                                    style={"backgroundColor": "#A2E6EE"},
-                                    className="stockselector",
+                                html.H2("STOCK PRICES \n Portfolio Allocation"),
+                                html.P("Pick one or more stocks from the dropdown below."),
+                                html.Div(
+                                    className="div-for-dropdown",
+                                    children=[
+                                        dcc.Dropdown(
+                                            id="stockselector",
+                                            options=get_options(df["Stock_ID"].unique()),
+                                            multi=True,
+                                            value=[df["close"].sort_values()[0]],
+                                            style={"backgroundColor": "#A2E6EE"},
+                                            className="stockselector",
+                                        ),
+                                    ],
+                                    style={"color": "#1E1E1E"},
+                                ),
+                                dcc.RadioItems(
+                                    id="data-view",
+                                    options=[
+                                        {"label": "RLEPR", "value": "RLEPR"},
+                                    ],
+                                    value="",
+                                    labelStyle={"display": "inline-block"},
+                                ),
+                                dcc.Loading(  # Add this Loading component to wrap around the Graph
+                                    id="loading-timeseries",
+                                    type="circle",
+                                    children=[
+                                        dcc.Graph(
+                                            id="timeseries",
+                                            config={"displayModeBar": True},
+                                            animate=True,
+                                            style={
+                                                "width": "100%",
+                                                "height": "100%",
+                                                "display": "inline-block",
+                                                "border": "3px #5c5c5c solid",
+                                                "padding-top": "10px",
+                                                "padding-left": "0px",
+                                                "overflow": "hidden",
+                                            },
+                                        ),
+                                    ],
                                 ),
                             ],
-                            style={"color": "#1E1E1E"},
                         ),
-                        dcc.RadioItems(
-                            id="data-view",
-                            options=[
-                                {"label": "RLEPR", "value": "RLEPR"},
-                            ],
-                            value="",
-                            labelStyle={"display": "inline-block"},
-                        ),
-                        
-                        dcc.Loading(  # Add this Loading component to wrap around the Graph
-                            id="loading-timeseries",
-                            type="circle",
+                        html.Div(  # Upper right side
+                            className="div-for-charts bg-grey",
+                            style={"width": "30%", "height": "70%", "display": "inline-block", "float": "right","margin-top": "170px"},
                             children=[
                                 dcc.Graph(
-                                    id="timeseries",
-                                    config={"displayModeBar": False},
-                                    animate=True,
+                                    id="callBackPieGraph",
+                                    figure=create_pie_chart(0),
                                     style={
                                         "width": "100%",
                                         "height": "100%",
@@ -382,59 +388,35 @@ app.layout = html.Div(
                                         "border": "3px #5c5c5c solid",
                                         "padding-top": "10px",
                                         "padding-left": "0px",
-                                        "overflow": "hidden",
+                                        "overflow": "visible",
                                     },
+                                    responsive=True,
                                 ),
+
                             ],
                         ),
                     ],
                 ),
-                #     ],
-                # ),
-                html.Div(  # Upper right side
-                    className="div-for-charts bg-grey",
-                    style={"width": "30%", "height": "50%", "display": "inline-block"},
+                html.Div(  # Bottom part with datatable
+                    id="div-1",
+                    style={"width": "100%", "height": "50%"},
                     children=[
-                        dcc.Graph(
-                            id="callBackPieGraph",
+                        html.Div(style={"height": "50px"}),
+                        html.Div(
+                            id="child-div",
                             style={
                                 "width": "100%",
                                 "height": "100%",
-                                "display": "inline-block",
                                 "border": "3px #5c5c5c solid",
-                                "padding-top": "10px",
-                                "padding-left": "0px",
-                                "overflow": "hidden",
+                                "padding": "50px",
+                                "box-sizing": "border-box",
                             },
-                            responsive=True,
                         ),
                     ],
                 ),
             ],
         ),
-        html.Div(  # Bottom part with datatable
-            id="div-1",
-            style={"width": "100%", "height": "50%"},
-            children=[
-                html.Div(style={"height": "50px"}),
-                html.Div(
-                    id="child-div",
-                    style={
-                        "width": "100%",
-                        "height": "100%",
-                        "border": "3px #5c5c5c solid",
-                        "padding": "50px",
-                        "box-sizing": "border-box",
-                    },
-                ),
-            ],
-        ),
     ],
-    style={
-        "width": "100%",
-        "height": "100%",
-        "backgroundColor": "#808080",
-    },
 )
 
 
